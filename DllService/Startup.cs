@@ -8,6 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 using DllService.Common;
 using DllService.app.Validators;
 using Microsoft.OpenApi.Models;
+using DllService.app.Model.Binder;
+
 namespace DllService
 {
     public class Startup
@@ -22,7 +24,9 @@ namespace DllService
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+            services.AddMvc(options=>{
+            options.ModelBinderProviders.Insert(0,new TypeLoadEntityBinderProvider());
+            }).SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
             services.AddSingleton<IDllContext, DllContext>();
             services.AddSingleton<TypeLoadValidator>();
             services.AddSingleton<DllValidator>();
