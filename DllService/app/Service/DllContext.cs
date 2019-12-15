@@ -86,7 +86,7 @@ namespace DllService.service
             return Activator.CreateInstance(classType, args);
         }
 
-        private ConstructorInfo GetConstructor(List<object> providedArgs, Type classType)
+        private ConstructorInfo GetConstructor(List<AbstractArg> providedArgs, Type classType)
         {
             foreach (var cnt in classType.GetConstructors())
             {
@@ -109,7 +109,7 @@ namespace DllService.service
             }
             return null;
         }
-        private MethodInfo GetMethod(List<object> providedArgs, Type classType, string methodName)
+        private MethodInfo GetMethod(List<AbstractArg> providedArgs, Type classType, string methodName)
         {
             foreach (var m in classType.GetMethods())
             {
