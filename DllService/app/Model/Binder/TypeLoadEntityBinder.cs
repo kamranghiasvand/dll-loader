@@ -16,13 +16,13 @@ namespace DllService.app.Model.Binder
         }
         public async Task BindModelAsync(ModelBindingContext ctx)
         {
-            var modelKindName = ModelNames.CreatePropertyModelName(ctx.ModelName, nameof(AbstractArg.Kind));            
+            var modelKindName = ModelNames.CreatePropertyModelName(ctx.ModelName, nameof(AbstractArg.Kind));
             var modelTypeValue = ctx.ValueProvider.GetValue(modelKindName).FirstValue;
             IModelBinder modelBinder;
             ModelMetadata modelMetadata;
-            if(modelTypeValue==null)
+            if (modelTypeValue == null)
             {
-                ctx.Result=ModelBindingResult.Failed();
+                ctx.Result = ModelBindingResult.Failed();
                 return;
             }
             if (modelTypeValue.ToLower().Trim() == "primitive")
@@ -47,13 +47,13 @@ namespace DllService.app.Model.Binder
             await modelBinder.BindModelAsync(newBindingContext);
             ctx.Result = newBindingContext.Result;
             if (newBindingContext.Result.IsModelSet)
-        {
-            // Setting the ValidationState ensures properties on derived types are correctly 
-            ctx.ValidationState[newBindingContext.Result] = new ValidationStateEntry
             {
-                Metadata = modelMetadata,
-            };
-        }
+                // Setting the ValidationState ensures properties on derived types are correctly 
+                ctx.ValidationState[newBindingContext.Result] = new ValidationStateEntry
+                {
+                    Metadata = modelMetadata,
+                };
+            }
         }
     }
 }

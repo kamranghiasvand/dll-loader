@@ -23,70 +23,86 @@ namespace DllService.service
         [MethodImpl(MethodImplOptions.Synchronized)]
         public object CallMethod(TypeLoadEntity entity)
         {
-            var obj = TryToInit(entity);
-
+            var obj = TryToInit(entity, true);
             return TryToCallMethod(entity, obj, obj.GetType());
         }
-        private object TryToInit(object input)
+        private object TryToInit(object input, bool loadTypeCare)
         {
-            if (!(input is TypeLoadEntity))
+            if (input is PrimitiveArg primitive) return primitive.Arg;
+            if (!(input is TypeLoadEntity)) return input;
+
+            var entity = input as TypeLoadEntity;
+            var dll = getDll(entity);
+            var classType = getClass(entity, dll);
+
+            object ins;
+            if (loadTypeCare && instances.TryGetValue(classType.FullName, out ins))
             {
-                return input;
+                return ins;
             }
-            var entity = (TypeLoadEntity)input;
-            Assembly dll;
-
-            if (!dlls.TryGetValue(entity.DllName, out dll))
-                throw new Common.Exceptions.DllNotFoundException(string.Format("Dll {0} not found", entity.DllName));
-
-            var classType = dll.GetType(entity.FullClassName);
-            if (classType == null)
-                throw new ClassNotFoundException(entity.FullClassName);
-
-            ConstructorInfo constructor = GetConstructor(entity.ConstructorArgs, classType);
-            if (constructor == null)
-                throw new ConstructorNotFoundException(string.Format("Could not find suitable constructor for class {0} with provided args", entity.FullClassName));
+            var constructor = getConstructor(entity.ConstructorArgs, classType);
             List<object> consArgs = new List<object>();
 
             foreach (var argInfo in entity.ConstructorArgs)
             {
-                consArgs.Add(TryToInit(argInfo));
+                consArgs.Add(TryToInit(argInfo, false));
             }
-            if (entity.LoadType == LoadType.Portotype)
+            if (!loadTypeCare || entity.LoadType == LoadType.Portotype)
             {
-                return CreateInstance(classType, consArgs);
+                return CreateInstance(classType, consArgs, constructor);
             }
-            object ins;
             if (!instances.TryGetValue(classType.FullName, out ins))
             {
-                ins = CreateInstance(classType, consArgs);
+                ins = CreateInstance(classType, consArgs, constructor);
                 instances.Add(classType.FullName, ins);
             }
             return ins;
 
 
         }
+
+        private static Type getClass(TypeLoadEntity entity, Assembly dll)
+        {
+            Type classType = dll.GetType(entity.FullClassName);
+            if (classType == null)
+                throw new ClassNotFoundException(entity.FullClassName);
+            return classType;
+        }
+
+        private Assembly getDll(TypeLoadEntity entity)
+        {
+            Assembly dll;
+            if (!dlls.TryGetValue(entity.DllName, out dll))
+                throw new Common.Exceptions.DllNotFoundException(string.Format("Dll {0} not found", entity.DllName));
+            return dll;
+        }
+
         private object TryToCallMethod(TypeLoadEntity entity, object obj, Type type)
         {
             var method = GetMethod(entity.MethodArgs, type, entity.MethodName);
-            if (method == null)
-                throw new MethodNotFoundException(string.Format("Method {0} not found in {1}", entity.MethodName, entity.FullClassName));
             List<object> args = new List<object>();
             foreach (var item in entity.MethodArgs)
             {
-                args.Add(TryToInit(item));
+                args.Add(TryToInit(item, false));
             }
             return method.Invoke(obj, args.ToArray());
 
         }
-        private object CreateInstance(Type classType, List<object> args)
+        private object CreateInstance(Type classType, List<object> args, ConstructorInfo constructor)
         {
+            if (constructor != null)
+            {
+                if (args == null || args.Count == 0)
+                    return constructor.Invoke(null);
+                return constructor.Invoke(args.ToArray());
+            }
+
             if (args == null || args.Count == 0)
                 return Activator.CreateInstance(classType);
-            return Activator.CreateInstance(classType, args);
+            return Activator.CreateInstance(classType, args.ToArray());
         }
 
-        private ConstructorInfo GetConstructor(List<AbstractArg> providedArgs, Type classType)
+        private ConstructorInfo getConstructor(List<AbstractArg> providedArgs, Type classType)
         {
             foreach (var cnt in classType.GetConstructors())
             {
@@ -97,8 +113,10 @@ namespace DllService.service
                 {
                     string expectedName = neededArgs[i].ParameterType.FullName;
                     string actualName = "";
-                    if (providedArgs[i] is TypeLoadEntity)
-                        actualName = ((TypeLoadEntity)providedArgs[i]).FullClassName;
+                    if (providedArgs[i] is TypeLoadEntity typeLoad)
+                        actualName = typeLoad.FullClassName;
+                    else if (providedArgs[i] is PrimitiveArg primitive)
+                        actualName = primitive.Arg.GetType().FullName;
                     else
                         actualName = (providedArgs[i].GetType().FullName);
                     if (!expectedName.Equals(actualName))
@@ -107,7 +125,8 @@ namespace DllService.service
                 }
                 return cnt;
             }
-            return null;
+            throw new ConstructorNotFoundException(string.Format("Could not find suitable constructor for class {0} with provided args", classType.FullName));
+
         }
         private MethodInfo GetMethod(List<AbstractArg> providedArgs, Type classType, string methodName)
         {
@@ -122,8 +141,10 @@ namespace DllService.service
                 {
                     string expectedName = neededArgs[i].ParameterType.FullName;
                     string actualName = "";
-                    if (providedArgs[i] is TypeLoadEntity)
-                        actualName = ((TypeLoadEntity)providedArgs[i]).FullClassName;
+                    if (providedArgs[i] is TypeLoadEntity typeLoad)
+                        actualName = typeLoad.FullClassName;
+                    else if (providedArgs[i] is PrimitiveArg primitive)
+                        actualName = primitive.Arg.GetType().FullName;
                     else
                         actualName = (providedArgs[i].GetType().FullName);
                     if (!expectedName.Equals(actualName))
@@ -131,7 +152,8 @@ namespace DllService.service
                 }
                 return m;
             }
-            return null;
+            throw new MethodNotFoundException(string.Format("Method {0} not found in {1}", methodName, classType.FullName));
+
         }
 
         public void Init()

@@ -25,7 +25,7 @@ namespace DllService
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc(options=>{
-           options.ModelBinderProviders.Insert(0,new TypeLoadEntityBinderProvider());
+         //  options.ModelBinderProviders.Insert(0,new TypeLoadEntityBinderProvider());
             }).SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
             services.AddSingleton<IDllContext, DllContext>();
             services.AddSingleton<TypeLoadValidator>();

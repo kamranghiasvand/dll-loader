@@ -1,4 +1,5 @@
-﻿using DllService.Model;
+﻿using DllService.app.Model;
+using DllService.Model;
 using DllService.Validation;
 using System;
 using System.Collections.Generic;
@@ -19,7 +20,7 @@ namespace DllService.app.Validators
         }
         private List<string> checkArgs(TypeLoadEntity entity)
         {
-            if(entity.ConstructorArgs!=null)
+            if (entity.ConstructorArgs != null)
             {
                 for (int i = 0; i < entity.ConstructorArgs.Count; i++)
                 {
@@ -32,6 +33,13 @@ namespace DllService.app.Validators
                         if (string.IsNullOrEmpty(arg.FullClassName))
                         {
                             return new List<string> { string.Format("Field {0} of ConstructorArgs[{1}] is empty", "FullClassName", i) };
+                        }
+                    }
+                    if (entity.ConstructorArgs[i] is PrimitiveArg primitive)
+                    {
+                        if (primitive.Arg == null)
+                        {
+                            return new List<string> { string.Format("Field {0} of  ConstructorArgs[{1}] is empty", "Arg", i) };
                         }
                     }
                 }
@@ -49,6 +57,13 @@ namespace DllService.app.Validators
                         if (string.IsNullOrEmpty(arg.FullClassName))
                         {
                             return new List<string> { string.Format("Field {0} of MethodArgs[{1}] is empty", "FullClassName", i) };
+                        }
+                    }
+                    if (entity.MethodArgs[i] is PrimitiveArg primitive)
+                    {
+                        if (primitive.Arg == null)
+                        {
+                            return new List<string> { string.Format("Field {0} of  MethodArgs[{1}] is empty", "Arg", i) };
                         }
                     }
                 }
